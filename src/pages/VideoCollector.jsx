@@ -238,8 +238,8 @@ export default function VideoCollector() {
 
 								const totalSeconds = hours * 3600 + minutes * 60 + seconds;
 
-								if (totalSeconds < 3600) return "text-green-600";
-								if (totalSeconds <= 7200) return "text-blue-600";
+								if (totalSeconds < 3600) return "text-blue-600";
+								if (totalSeconds <= 7200) return "text-green-600";
 								return "text-red-600";
 							})()}`}
 						>
