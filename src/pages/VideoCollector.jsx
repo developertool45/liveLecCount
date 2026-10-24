@@ -228,8 +228,22 @@ export default function VideoCollector() {
 					</span>
 
 					<span className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-						<span className="font-semibold text-blue-600">
-							{video.duration || "00:00:00"}
+						<span
+							className={`font-semibold ${(() => {
+								const [hours = 0, minutes = 0, seconds = 0] = (
+									video?.duration || "00:00:00"
+								)
+									.split(":")
+									.map(Number);
+
+								const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+								if (totalSeconds < 3600) return "text-green-600";
+								if (totalSeconds <= 7200) return "text-blue-600";
+								return "text-red-600";
+							})()}`}
+						>
+							{video?.duration || "00:00:00"}
 						</span>
 
 						<span>{date}</span>
