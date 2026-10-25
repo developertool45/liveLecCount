@@ -25,13 +25,34 @@ function formatDuration(seconds) {
 		.join(":");
 }
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, inputItem = false, otherProps }) {
+	const totalCost =
+		Number(otherProps?.totalHours) * Number(otherProps?.value);
+
 	return (
 		<div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4">
 			<p className="text-sm text-gray-500">{label}</p>
-			<p className="mt-2 break-words text-xl font-bold text-gray-900">
+			<p className="mt-2 break-words text-lg font-semibold text-gray-900">
 				{value}
 			</p>
+			{inputItem && (
+				<div className="mt-2">
+					<input
+						type="number"
+						min="0"
+						step="0.01"
+						value={otherProps?.value || ""}
+						onChange={otherProps?.onChange}
+						placeholder="Per Lecture Cost"
+						className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+					/>
+
+					<span className="ml-2 text-sm text-gray-500">
+						Total cost:{" "}
+						{Number.isFinite(totalCost) ? totalCost.toFixed(2) : "0.00"}
+					</span>
+				</div>
+			)}
 		</div>
 	);
 }
@@ -44,6 +65,7 @@ export default function VideoCollector() {
 	const [search, setSearch] = useState("");
 	const [selectedIds, setSelectedIds] = useState(() => new Set());
 	const [courseId, setCourseId] = useState("");
+	const [lectureCalculate, setLectureCalculate] = useState("");
 
 	async function fetchAllVideos() {
 		if (loading || !courseId.trim()) return;
@@ -282,7 +304,7 @@ export default function VideoCollector() {
 				aria-busy={loading}
 			>
 				<header className="mb-5">
-					<h1 className="text-2xl font-bold">Classplus Video Collector</h1>
+					<h1 className="text-2xl font-semibold">Classplus Video Collector</h1>
 					<p className="mt-1 text-sm text-gray-500">
 						Collect lectures, select your sessions and calculate total duration.
 					</p>
@@ -356,7 +378,16 @@ export default function VideoCollector() {
 						value={formatDuration(totalSeconds)}
 					/>
 					<StatCard label="Total Minutes" value={`${totalMinutes} min`} />
-					<StatCard label="Total Hours" value={`${totalHours} hrs`} />
+					<StatCard
+						label="Total Hours"
+						value={`${totalHours} hrs`}
+						inputItem={true}
+						otherProps={{
+							value: lectureCalculate,
+							onChange: (e) => setLectureCalculate(e.target.value),
+							totalHours,
+						}}
+					/>
 				</section>
 
 				<section className="grid items-stretch gap-5 lg:grid-cols-2">
