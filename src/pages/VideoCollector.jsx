@@ -25,6 +25,58 @@ function formatDuration(seconds) {
 		.join(":");
 }
 
+function formatLocalDate(date) {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function parseLectureDate(value) {
+	if (value === null || value === undefined || value === "") return "";
+
+	if (typeof value === "number" || /^\d+$/.test(String(value).trim())) {
+		const timestamp = Number(value);
+		const date = new Date(timestamp < 1e12 ? timestamp * 1000 : timestamp);
+		return Number.isNaN(date.getTime()) ? "" : formatLocalDate(date);
+	}
+
+	const text = String(value)
+		.trim()
+		.replace(/^On:\s*/i, "");
+	const isoDate = text.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/);
+	const dayFirstDate = text.match(/\b(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})\b/);
+	const explicitDate = isoDate
+		? [Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3])]
+		: dayFirstDate
+			? [
+					Number(dayFirstDate[3]),
+					Number(dayFirstDate[2]),
+					Number(dayFirstDate[1]),
+				]
+			: null;
+
+	if (explicitDate) {
+		const [year, month, day] = explicitDate;
+		const date = new Date(Date.UTC(year, month - 1, day));
+
+		if (
+			date.getUTCFullYear() === year &&
+			date.getUTCMonth() === month - 1 &&
+			date.getUTCDate() === day
+		) {
+			return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+		}
+		return "";
+	}
+
+	const date = new Date(text);
+	return Number.isNaN(date.getTime()) ? "" : formatLocalDate(date);
+}
+
+function getLectureDate(video) {
+	return (
+		parseLectureDate(video.createdAt) || parseLectureDate(video.createdAtText)
+	);
+}
+
 function StatCard({ label, value, inputItem = false, otherProps }) {
 	const totalCost = Number(otherProps?.totalHours) * Number(otherProps?.value);
 
@@ -64,6 +116,8 @@ export default function VideoCollector() {
 	const [error, setError] = useState("");
 	const [status, setStatus] = useState("");
 	const [search, setSearch] = useState("");
+	const [startDate, setStartDate] = useState("");
+	const [endDate, setEndDate] = useState("");
 	const [selectedIds, setSelectedIds] = useState(() => new Set());
 	const [courseId, setCourseId] = useState("");
 	const [lectureCalculate, setLectureCalculate] = useState("");
@@ -105,22 +159,37 @@ export default function VideoCollector() {
 		}
 	}
 
+	const dateFilteredVideos = useMemo(() => {
+		if (startDate && endDate && startDate > endDate) return [];
+		if (!startDate && !endDate) return videos;
+
+		return videos.filter((video) => {
+			const date = getLectureDate(video);
+			return (
+				date &&
+				(!startDate || date >= startDate) &&
+				(!endDate || date <= endDate)
+			);
+		});
+	}, [videos, startDate, endDate]);
+
 	const filteredVideos = useMemo(() => {
 		const query = search.trim().toLowerCase();
 
-		if (!query) return videos;
+		if (!query) return dateFilteredVideos;
 
-		return videos.filter((video) =>
+		return dateFilteredVideos.filter((video) =>
 			[video.name, video.tutorName, video.createdAt, video.createdAtText]
 				.join(" ")
 				.toLowerCase()
 				.includes(query),
 		);
-	}, [videos, search]);
+	}, [dateFilteredVideos, search]);
 
 	const selectedVideos = useMemo(
-		() => videos.filter((video) => selectedIds.has(String(video.id))),
-		[videos, selectedIds],
+		() =>
+			dateFilteredVideos.filter((video) => selectedIds.has(String(video.id))),
+		[dateFilteredVideos, selectedIds],
 	);
 
 	const totalSeconds = useMemo(
@@ -225,7 +294,7 @@ export default function VideoCollector() {
 	}
 
 	function exportAll() {
-		exportCSV(videos, "all-lectures.csv");
+		exportCSV(dateFilteredVideos, "all-lectures.csv");
 	}
 
 	function renderVideo(video, selected = false) {
@@ -300,7 +369,7 @@ export default function VideoCollector() {
 				</div>
 			)}
 			<div
-				className="mx-auto max-w-[1800px]"
+				className="mx-auto max-w-[1800px] "
 				inert={loading}
 				aria-busy={loading}
 			>
@@ -350,10 +419,10 @@ export default function VideoCollector() {
 						<button
 							type="button"
 							onClick={exportAll}
-							disabled={videos.length === 0 || loading}
+							disabled={dateFilteredVideos.length === 0 || loading}
 							className="rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
 						>
-							Export All ({videos.length})
+							Export All ({dateFilteredVideos.length})
 						</button>
 					</div>
 				</div>
@@ -391,7 +460,7 @@ export default function VideoCollector() {
 				)}
 
 				<section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-					<StatCard label="Live Lectures" value={videos.length} />
+					<StatCard label="Live Lectures" value={dateFilteredVideos.length} />
 					<StatCard label="Selected Lectures" value={selectedVideos.length} />
 					<StatCard
 						label="Total Duration"
@@ -414,7 +483,52 @@ export default function VideoCollector() {
 					{/* All Content */}
 					<article className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white">
 						<div className="border-b border-gray-200 p-4">
-							<h2 className="text-lg font-bold">All Content</h2>
+							<div className="flex flex-wrap items-end justify-between gap-3">
+								<h2 className="text-lg font-bold">All Content</h2>
+								<div className="flex flex-wrap items-end gap-2">
+									<div className="flex gap-1 items-center">
+										<label
+											htmlFor="startDate"
+											className="mb-1 block text-sm font-medium text-gray-600"
+										>
+											From
+										</label>
+										<input
+											id="startDate"
+											type="date"
+											value={startDate}
+											onChange={(event) => setStartDate(event.target.value)}
+											className="rounded-md border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+										/>
+									</div>
+									<div className="flex gap-1 items-center">
+										<label
+											htmlFor="endDate"
+											className="mb-1 block text-sm font-medium text-gray-600"
+										>
+											To
+										</label>
+										<input
+											id="endDate"
+											type="date"
+											value={endDate}
+											onChange={(event) => setEndDate(event.target.value)}
+											className="rounded-md border border-gray-300 px-2 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+										/>
+									</div>
+									<button
+										type="button"
+										onClick={() => {
+											setStartDate("");
+											setEndDate("");
+										}}
+										disabled={!startDate && !endDate}
+										className="rounded-md bg-gray-100 px-3 py-2 text-sm font-medium hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										Clear dates
+									</button>
+								</div>
+							</div>
 
 							<input
 								type="search"
@@ -425,8 +539,14 @@ export default function VideoCollector() {
 							/>
 
 							<p className="mt-2 text-xs text-gray-500">
-								Showing {filteredVideos.length} of {videos.length} videos
+								Showing {filteredVideos.length} of {dateFilteredVideos.length}{" "}
+								videos
 							</p>
+							{startDate && endDate && startDate > endDate && (
+								<p className="mt-2 text-sm text-red-600" role="alert">
+									The start date must be on or before the end date.
+								</p>
+							)}
 						</div>
 
 						<div className="h-[58vh] min-h-[300px] overflow-y-auto">
