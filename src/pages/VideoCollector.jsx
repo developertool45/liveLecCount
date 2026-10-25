@@ -26,8 +26,7 @@ function formatDuration(seconds) {
 }
 
 function StatCard({ label, value, inputItem = false, otherProps }) {
-	const totalCost =
-		Number(otherProps?.totalHours) * Number(otherProps?.value);
+	const totalCost = Number(otherProps?.totalHours) * Number(otherProps?.value);
 
 	return (
 		<div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4">
@@ -47,9 +46,11 @@ function StatCard({ label, value, inputItem = false, otherProps }) {
 						className="w-1/2 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
 					/>
 
-					<span className="ml-2 text-sm text-gray-500">
-						Total cost:{" "}
-						{Number.isFinite(totalCost) ? totalCost.toFixed(2) : "0.00"}
+					<span className="ml-2 text-md text-gray-500">
+						Total :{" "}
+						<span className="font-semibold text-green-700">
+							{Number.isFinite(totalCost) ? totalCost.toFixed(2) : "0.00"}
+						</span>
 					</span>
 				</div>
 			)}
@@ -336,12 +337,31 @@ export default function VideoCollector() {
 					>
 						{loading ? "Fetching..." : "Get All Lectures"}
 					</button>
+					<div className="flex flex-wrap items-center gap-3  ">
+						<button
+							type="button"
+							onClick={exportSelected}
+							disabled={selectedVideos.length === 0}
+							className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Export Selected ({selectedVideos.length})
+						</button>
+
+						<button
+							type="button"
+							onClick={exportAll}
+							disabled={videos.length === 0 || loading}
+							className="rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							Export All ({videos.length})
+						</button>
+					</div>
 				</div>
 				<span className="text-sm text-gray-600" role="status">
 					{status || "Ready to fetch lectures."}
 				</span>
 
-				<div className="flex flex-wrap items-center gap-3 my-2">
+				{/* <div className="flex flex-wrap items-center gap-3 my-2">
 					<button
 						type="button"
 						onClick={exportSelected}
@@ -359,7 +379,7 @@ export default function VideoCollector() {
 					>
 						Export All ({videos.length})
 					</button>
-				</div>
+				</div> */}
 
 				{error && (
 					<div
